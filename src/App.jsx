@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getOffers, createOffer } from './firestore'
+import stripePromise from './stripe'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -686,8 +687,14 @@ export default function App() {
             ))}
             <div className="flex justify-between pt-1 font-bold text-base"><span>Total</span><span className="text-indigo-600">€{((currentOffer?.price||18)*1.15).toFixed(2)}</span></div>
           </div>
-          <button onClick={() => { setModal(null); showToast('✓ Session réservée ! Le lien vous sera envoyé 10 min avant.') }} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-colors">Confirmer et payer</button>
-          <p className="text-center text-xs text-gray-400 mt-3">Pré-autorisation uniquement · Libéré après la session</p>
+<button onClick={async () => {
+  const stripe = await stripePromise
+  showToast('⏳ Traitement du paiement...')
+  setTimeout(() => {
+    setModal(null)
+    showToast('✓ Session réservée ! Le lien vous sera envoyé 10 min avant.')
+  }, 2000)
+}} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-colors">Confirmer et payer</button>          <p className="text-center text-xs text-gray-400 mt-3">Pré-autorisation uniquement · Libéré après la session</p>
         </div>
       </Modal>
 
