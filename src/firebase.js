@@ -14,10 +14,3 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-```
-
-Sauvegardez avec **Ctrl+S**, puis dans le terminal :
-```
-git add .
-git commit -m "Variables environnement Firebase"
-git push
