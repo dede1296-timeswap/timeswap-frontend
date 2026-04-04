@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getOffers, createOffer } from './firestore'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -14,6 +15,8 @@ export default function App() {
   ])
   const [chatInput, setChatInput] = useState('')
   const [timer, setTimer] = useState(0)
+  const [dbOffers, setDbOffers] = useState([])
+  const [loadingOffers, setLoadingOffers] = useState(true)
   const [rating, setRating] = useState(0)
   const timerRef = useRef(null)
 
@@ -56,11 +59,25 @@ export default function App() {
 
   const goTo = (p) => { setPage(p); window.scrollTo(0,0) }
 
-  const filteredOffers = offers.filter(o => {
+  const filteredOffers = (dbOffers.length > 0 ? dbOffers : offers).filter(o => {
     const matchCat = !category || o.cat === category
     const matchSearch = !search || o.title.toLowerCase().includes(search.toLowerCase()) || o.seller.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
   })
+
+  useEffect(() => {
+  async function loadOffers() {
+    try {
+      const data = await getOffers(category)
+      setDbOffers(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingOffers(false)
+    }
+  }
+  loadOffers()
+}, [category])
 
   useEffect(() => {
     if (page === 'session') {
@@ -298,12 +315,28 @@ export default function App() {
   const CreatePage = () => {
     const [notif, setNotif] = useState(null)
     const [form, setForm] = useState({ title:'', desc:'', cat:'', premium:false })
-    const submit = () => {
+    const submit = async () => {
       if (!form.title || !form.desc || !form.cat) {
         setNotif({ type:'error', msg:'Veuillez compléter tous les champs obligatoires.' })
-      } else {
+        return
+      }
+      try {
+        await createOffer({
+          title: form.title,
+          desc: form.desc,
+          cat: form.cat,
+          premium: form.premium,
+          seller: 'Moi',
+          initials: 'MO',
+          durations: [30, 60],
+          price: 20,
+          rating: 0,
+          reviews: 0,
+        })
         setNotif({ type:'success', msg:'✓ Votre offre est en ligne !' })
         setTimeout(() => goTo('offers'), 2000)
+      } catch (err) {
+        setNotif({ type:'error', msg:'Erreur lors de la publication.' })
       }
     }
     return (
