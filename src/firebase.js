@@ -3,14 +3,21 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDruxp8WfSOLngVQAtykbOZAm2P8lI6_qk",
-  authDomain: "timeswap-e208c.firebaseapp.com",
-  projectId: "timeswap-e208c",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: "timeswap-e208c.firebasestorage.app",
   messagingSenderId: "456150513729",
-  appId: "1:456150513729:web:064f94b3f21b2f328e6ec0"
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+```
+
+Sauvegardez avec **Ctrl+S**, puis dans le terminal :
+```
+git add .
+git commit -m "Variables environnement Firebase"
+git push
