@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { getOffers, createOffer } from './firestore'
 import stripePromise from './stripe'
+import { auth } from './firebase'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -19,7 +21,11 @@ export default function App() {
   const [dbOffers, setDbOffers] = useState([])
   const [loadingOffers, setLoadingOffers] = useState(true)
   const [rating, setRating] = useState(0)
+  const [user, setUser] = useState(null)
   const timerRef = useRef(null)
+  useEffect(() => {
+  onAuthStateChanged(auth, (u) => setUser(u))
+                  }, [])
 
   const offers = [
     { id:1, seller:'Marie L.', initials:'ML', title:'Coaching CV & LinkedIn', desc:'Optimisez votre profil LinkedIn et votre CV pour décrocher plus d\'entretiens.', cat:'Coaching', durations:[30,60], price:18, premium:true, rating:4.9, reviews:47 },
@@ -114,10 +120,19 @@ export default function App() {
           </button>
         ))}
       </div>
-      <div className="flex gap-2">
-        <button onClick={() => setModal('login')} className="px-4 py-2 rounded-lg border-2 border-indigo-600 text-indigo-600 text-sm font-medium hover:bg-indigo-50 transition-colors">Connexion</button>
-        <button onClick={() => setModal('signup')} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">S'inscrire</button>
-      </div>
+      <div className="flex gap-2 items-center">
+  {user ? (
+    <>
+      <span className="text-sm text-gray-500">{user.email}</span>
+      <button onClick={() => signOut(auth)} className="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors">Déconnexion</button>
+    </>
+  ) : (
+    <>
+      <button onClick={() => setModal('login')} className="px-4 py-2 rounded-lg border-2 border-indigo-600 text-indigo-600 text-sm font-medium hover:bg-indigo-50 transition-colors">Connexion</button>
+      <button onClick={() => setModal('signup')} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">S'inscrire</button>
+    </>
+  )}
+</div>
     </nav>
   )
 
@@ -662,28 +677,48 @@ await createOffer({
       {page==='cgu' && <CguPage />}
 
       <Modal id="login" title="Connexion">
-        <div className="space-y-4">
-          <div><label className="text-sm font-medium block mb-1">Email</label><input type="email" placeholder="votre@email.com" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
-          <div><label className="text-sm font-medium block mb-1">Mot de passe</label><input type="password" placeholder="••••••••" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
-          <button onClick={() => { setModal(null); showToast('Bienvenue sur TimeSwap !') }} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Se connecter</button>
-          <p className="text-center text-sm text-gray-500">Pas de compte ? <span className="text-indigo-600 cursor-pointer" onClick={() => setModal('signup')}>S'inscrire</span></p>
-        </div>
-      </Modal>
+  <div className="space-y-4">
+    <div><label className="text-sm font-medium block mb-1">Email</label><input id="login-email" type="email" placeholder="votre@email.com" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
+    <div><label className="text-sm font-medium block mb-1">Mot de passe</label><input id="login-password" type="password" placeholder="••••••••" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
+    <button onClick={async () => {
+      const email = document.getElementById('login-email').value
+      const password = document.getElementById('login-password').value
+      try {
+        await signInWithEmailAndPassword(auth, email, password)
+        setModal(null)
+        showToast('Bienvenue sur TimeSwap !')
+      } catch (err) {
+        showToast('Email ou mot de passe incorrect.', 'error')
+      }
+    }} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Se connecter</button>
+    <p className="text-center text-sm text-gray-500">Pas de compte ? <span className="text-indigo-600 cursor-pointer" onClick={() => setModal('signup')}>S'inscrire</span></p>
+  </div>
+</Modal>
 
       <Modal id="signup" title="Créer un compte">
-        <div className="space-y-4">
-          {[['Nom complet','text','Marie Dupont'],['Email','email','votre@email.com'],['Mot de passe','password','••••••••']].map(([label,type,ph]) => (
-            <div key={label}><label className="text-sm font-medium block mb-1">{label}</label><input type={type} placeholder={ph} className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
-          ))}
-          <div><label className="text-sm font-medium block mb-1">Je suis un...</label>
-            <select className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none">
-              <option>Acheteur</option><option>Vendeur</option><option>Les deux</option>
-            </select>
-          </div>
-          <button onClick={() => { setModal(null); showToast('Compte créé ! Vérifiez votre email.') }} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Créer mon compte</button>
-          <p className="text-center text-xs text-gray-400">En vous inscrivant, vous acceptez nos <span className="text-indigo-600 cursor-pointer" onClick={() => { setModal(null); goTo('cgu') }}>CGU</span></p>
-        </div>
-      </Modal>
+  <div className="space-y-4">
+    <div><label className="text-sm font-medium block mb-1">Nom complet</label><input type="text" placeholder="Marie Dupont" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
+    <div><label className="text-sm font-medium block mb-1">Email</label><input id="signup-email" type="email" placeholder="votre@email.com" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
+    <div><label className="text-sm font-medium block mb-1">Mot de passe</label><input id="signup-password" type="password" placeholder="••••••••" className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none" /></div>
+    <div><label className="text-sm font-medium block mb-1">Je suis un...</label>
+      <select className="w-full border-2 border-gray-200 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none">
+        <option>Acheteur</option><option>Vendeur</option><option>Les deux</option>
+      </select>
+    </div>
+    <button onClick={async () => {
+      const email = document.getElementById('signup-email').value
+      const password = document.getElementById('signup-password').value
+      try {
+        await createUserWithEmailAndPassword(auth, email, password)
+        setModal(null)
+        showToast('Compte créé ! Bienvenue sur TimeSwap.')
+      } catch (err) {
+        showToast('Erreur : ' + err.message, 'error')
+      }
+    }} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Créer mon compte</button>
+    <p className="text-center text-xs text-gray-400">En vous inscrivant, vous acceptez nos <span className="text-indigo-600 cursor-pointer" onClick={() => { setModal(null); goTo('cgu') }}>CGU</span></p>
+  </div>
+</Modal>
 
       <Modal id="booking" title="Confirmer la réservation">
         <div>
