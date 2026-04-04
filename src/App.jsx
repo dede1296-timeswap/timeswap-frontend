@@ -276,8 +276,8 @@ export default function App() {
               <div className="text-sm font-semibold mb-3">Durées disponibles</div>
               <div className="flex gap-2 flex-wrap">
                 {o.durations.map(d => (
-                  <span key={d} className="px-4 py-2 rounded-full border-2 border-indigo-600 text-indigo-600 text-sm font-medium">{d} min — €{Math.round(o.price*(d/30))}</span>
-                ))}
+                <span key={d} className="px-4 py-2 rounded-full border-2 border-indigo-600 text-indigo-600 text-sm font-medium">{d} min — €{o.prices ? o.prices[d] : Math.round(o.price*(d/30))}</span>
+                  ))}
               </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm">
@@ -322,18 +322,30 @@ export default function App() {
         return
       }
       try {
-        await createOffer({
-          title: form.title,
-          desc: form.desc,
-          cat: form.cat,
-          premium: form.premium,
-          seller: 'Moi',
-          initials: 'MO',
-          durations: [30, 60],
-          price: 20,
-          rating: 0,
-          reviews: 0,
-        })
+        const durations = [
+  ...(form.dur15 ? [15] : []),
+  ...(form.dur30 ? [30] : []),
+  ...(form.dur60 ? [60] : []),
+]
+const prices = {}
+if (form.dur15 && form.price15) prices[15] = Number(form.price15)
+if (form.dur30 && form.price30) prices[30] = Number(form.price30)
+if (form.dur60 && form.price60) prices[60] = Number(form.price60)
+const minPrice = Math.min(...Object.values(prices))
+
+await createOffer({
+  title: form.title,
+  desc: form.desc,
+  cat: form.cat,
+  premium: form.premium,
+  seller: 'Moi',
+  initials: 'MO',
+  durations,
+  price: minPrice,
+  prices,
+  rating: 0,
+  reviews: 0,
+})
         setNotif({ type:'success', msg:'✓ Votre offre est en ligne !' })
         setTimeout(() => goTo('offers'), 2000)
       } catch (err) {
@@ -366,7 +378,9 @@ export default function App() {
             <label className="text-sm font-medium block mb-2">Durées disponibles *</label>
             {[15,30,60].map(d => (
               <div key={d} className="flex items-center gap-2 mb-2">
-                <input type="checkbox" id={`dur${d}`} className="w-4 h-4" />
+                <input type="checkbox" id={`dur${d}`} className="w-4 h-4"
+                  checked={form[`dur${d}`]}
+                  onChange={e => setForm({...form, [`dur${d}`]: e.target.checked})} />
                 <label htmlFor={`dur${d}`} className="text-sm">{d} minutes</label>
               </div>
             ))}
@@ -374,10 +388,15 @@ export default function App() {
           <div className="mb-5">
             <label className="text-sm font-medium block mb-2">Prix par durée (€)</label>
             <div className="grid grid-cols-3 gap-3">
-              {['15 min','30 min','60 min'].map(d => (
-                <div key={d}>
-                  <label className="text-xs text-gray-500 block mb-1">{d}</label>
-                  <input type="number" className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-indigo-500 outline-none" placeholder="€" min="0" />
+              {[['15 min','price15','dur15'],['30 min','price30','dur30'],['60 min','price60','dur60']].map(([label, priceKey, durKey]) => (
+                <div key={priceKey}>
+                  <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                  <input type="number"
+                    className={`w-full border-2 rounded-lg p-2 text-sm outline-none ${form[durKey] ? 'border-indigo-500 focus:border-indigo-600' : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'}`}
+                    placeholder="€" min="0"
+                    disabled={!form[durKey]}
+                    value={form[priceKey]}
+                    onChange={e => setForm({...form, [priceKey]: e.target.value})} />
                 </div>
               ))}
             </div>
